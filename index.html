@@ -24,46 +24,7 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
-    <script>
-        var ctx = document.getElementById('myChart').getContext('2d');
-        var myChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: '# of Tweets',
-                    data: [],
-                    backgroundColor: [
-                        'rgba(255, 99, 132, 0.2)',
-                        'rgba(54, 162, 235, 0.2)',
-			'rgba(255, 159, 64, 0.2)'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    yAxes: [{
-                        ticks: {
-                            beginAtZero: true
-                        }
-                    }]
-                }
-            }
-        });
-
-        axios.get("http://localhost:1500/polls", {}).then((res) => {
-            for (var key in res.data) {
-                myChart.data.labels.push(key);
-                myChart.data.datasets.forEach((dataset) => {
-                    dataset.data.push(res.data[key]);
-                });
-                myChart.update();
-            }
-        }).catch(err => {
-            console.log("Could not retrieve information from the backend")
-            console.error(err)
-        })
-    </script>
+<script src="https://js.pusher.com/4.4/pusher.min.js"></script>
+<script src="static/app.js"></script>
 </body>
 </html>
