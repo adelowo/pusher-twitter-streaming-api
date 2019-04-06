@@ -12,10 +12,12 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
 	"github.com/joho/godotenv"
+	"github.com/pusher/pusher-http-go"
 )
 
 type cache struct {
@@ -25,7 +27,7 @@ type cache struct {
 
 func (c *cache) Init(options ...string) {
 	for _, v := range options {
-		c.counter[v] = 0
+		c.counter[strings.TrimSpace(v)] = 0
 	}
 }
 
@@ -40,14 +42,14 @@ func (c *cache) Incr(option string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.counter[option]++
+	c.counter[strings.TrimSpace(option)]++
 }
 
 func (c *cache) Count(option string) int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	val, ok := c.counter[option]
+	val, ok := c.counter[strings.TrimSpace(option)]
 	if !ok {
 		return 0
 	}
@@ -59,11 +61,31 @@ func main() {
 
 	options := flag.String("options", "Billy Ray Cyrus,Old Town Road,Word Bank", "What items to search for on Twitter")
 	httpPort := flag.Int("http.port", 1500, "What port to run HTTP on ?")
+	channelsPublishInterval := flag.Duration("channels.duration", 3*time.Second, "How much duration before data is published to Pusher Channels")
 
 	flag.Parse()
 
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("could not load .env file.. %v", err)
+	}
+
+	appID := os.Getenv("PUSHER_APP_ID")
+	appKey := os.Getenv("PUSHER_APP_KEY")
+	appSecret := os.Getenv("PUSHER_APP_SECRET")
+	appCluster := os.Getenv("PUSHER_APP_CLUSTER")
+	appIsSecure := os.Getenv("PUSHER_APP_SECURE")
+
+	var isSecure bool
+	if appIsSecure == "1" {
+		isSecure = true
+	}
+
+	pusherClient := &pusher.Client{
+		AppId:   appID,
+		Key:     appKey,
+		Secret:  appSecret,
+		Cluster: appCluster,
+		Secure:  isSecure,
 	}
 
 	config := oauth1.NewConfig(os.Getenv("TWITTER_CONSUMER_KEY"), os.Getenv("TWITTER_CONSUMER_SECRET"))
@@ -73,7 +95,7 @@ func main() {
 
 	client := twitter.NewClient(httpClient)
 
-	cache := &cache{
+	optionsCache := &cache{
 		mu:      sync.RWMutex{},
 		counter: make(map[string]int64),
 	}
@@ -86,7 +108,7 @@ func main() {
 		log.Fatalf("There cannot be more than 3 options... %v", splittedOptions)
 	}
 
-	cache.Init(splittedOptions...)
+	optionsCache.Init(splittedOptions...)
 
 	go func() {
 
@@ -95,7 +117,7 @@ func main() {
 
 		http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("."))))
 
-		http.Handle("/polls", http.HandlerFunc(poll(cache)))
+		http.Handle("/polls", http.HandlerFunc(poll(optionsCache)))
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
 			once.Do(func() {
@@ -113,11 +135,24 @@ func main() {
 		http.ListenAndServe(fmt.Sprintf(":%d", *httpPort), nil)
 	}()
 
+	go func(c *cache, client *pusher.Client) {
+
+		t := time.NewTicker(*channelsPublishInterval)
+
+		for {
+			select {
+			case <-t.C:
+				pusherClient.Trigger("twitter-votes", "options", c.All())
+			}
+		}
+
+	}(optionsCache, pusherClient)
+
 	demux := twitter.NewSwitchDemux()
 	demux.Tweet = func(tweet *twitter.Tweet) {
 		for _, v := range splittedOptions {
 			if strings.Contains(tweet.Text, v) {
-				cache.Incr(v)
+				optionsCache.Incr(v)
 			}
 		}
 	}
@@ -138,11 +173,7 @@ func main() {
 
 	ch := make(chan os.Signal)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-	log.Println(<-ch)
-
-	for _, v := range splittedOptions {
-		fmt.Println(cache.Count(v))
-	}
+	<-ch
 
 	fmt.Println("Stopping Stream...")
 	stream.Stop()
