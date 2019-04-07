@@ -9,7 +9,7 @@ This will be plotted in a graph.
 
 - Clone this repository `git clone git@github.com:adelowo/pusher-twitter-streaming-api.git`.
 - Update `.env` to contain your original credentials.
-- Update `APP_KEY` and `APP_CLUSTER` in L81 - L82 of [app.js](https://github.com/adelowo/pusher-twitter-streaming-api/blob/master/app.js#L1-L3)
+- Update `APP_KEY` and `APP_CLUSTER` in L1 - L2 of [app.js](https://github.com/adelowo/pusher-twitter-streaming-api/blob/master/app.js#L1-L3)
 
 ## Built With
 
