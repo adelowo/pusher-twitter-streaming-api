@@ -1,5 +1,5 @@
-const APP_KEY = 'f2723129f20109fa025a';
-const APP_CLUSTER = 'eu';
+const APP_KEY = 'PUSHER_APP_KEY';
+const APP_CLUSTER = 'PUSHER_APP_CLUSTER';
 
 var ctx = document.getElementById('myChart').getContext('2d');
 var myChart = new Chart(ctx, {
