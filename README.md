@@ -4,6 +4,8 @@ How to build an application that shows the popularity of an item in realtime.
 The data is going to be purely based on tweets. For examples, Items could be "Trump", "LeBron James", "Kendrick Lamar". 
 This will be plotted in a graph.
 
+https://pusher.com/tutorials/go-tweets-popularity-chart
+
 
 #### Getting started
 
